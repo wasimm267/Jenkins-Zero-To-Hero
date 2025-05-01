@@ -78,28 +78,30 @@ pipeline {
     }
 
     stage('Update Deployment File') {
-  steps {
-    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-      sh '''
-        # Trust Jenkins workspace for Git
-        git config --global --add safe.directory /var/lib/jenkins/workspace/ci-cd-demo
+      steps {
+        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+          sh '''
+            # Allow Git to run inside Docker container
+            git config --global --add safe.directory /var/lib/jenkins/workspace/ci-cd-demo
 
-        GIT_ROOT=$(git rev-parse --show-toplevel) || exit 1
-        cd "$GIT_ROOT"
+            # Get to the root of the Git repo
+            GIT_ROOT=$(git rev-parse --show-toplevel) || exit 1
+            cd "$GIT_ROOT"
 
-        git config user.email "wasimm267@gmail.com"
-        git config user.name "wasimm267"
+            git config user.email "wasimm267@gmail.com"
+            git config user.name "wasimm267"
 
-        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            # Update the image tag in the Kubernetes manifest
+            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
-        git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-      '''
+            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+          '''
+        }
+      }
     }
   }
-}
-
 
   post {
     success {
