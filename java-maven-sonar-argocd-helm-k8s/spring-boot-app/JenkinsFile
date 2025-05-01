@@ -1,9 +1,13 @@
 pipeline {
   agent {
     docker {
-      image 'carlossg/maven-node-docker' // Image with Maven + Docker pre-installed
+      image 'maven:3.9.6-eclipse-temurin-17'
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
     }
+  }
+
+  options {
+    timeout(time: 10, unit: 'MINUTES')
   }
 
   environment {
@@ -14,21 +18,24 @@ pipeline {
   }
 
   stages {
+    stage('Install Docker CLI') {
+      steps {
+        sh '''
+          apt-get update && apt-get install -y docker.io
+          docker --version
+        '''
+      }
+    }
 
     stage('Checkout') {
       steps {
-        // Optional echo to test if pipeline is running
-        echo 'Checking out source code...'
-        git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
+        git branch: 'main', url: 'https://github.com/wasimm267/Jenkins-Zero-To-Hero.git'
       }
     }
 
     stage('Build and Test') {
       steps {
-        sh '''
-          cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-          mvn clean package
-        '''
+        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
       }
     }
 
@@ -81,10 +88,10 @@ pipeline {
 
   post {
     success {
-      echo "Pipeline completed successfully! ✅"
+      echo "✅ Pipeline succeeded"
     }
     failure {
-      echo "Pipeline failed ❌"
+      echo "❌ Pipeline failed"
     }
   }
 }
