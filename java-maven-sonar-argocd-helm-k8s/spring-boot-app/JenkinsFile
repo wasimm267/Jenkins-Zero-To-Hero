@@ -18,7 +18,7 @@ pipeline {
     stage('Install Docker CLI') {
       steps {
         sh '''
-          echo "Installing Docker inside agent container..."
+          echo "Installing Docker CLI inside container..."
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io
           docker --version
@@ -31,8 +31,7 @@ pipeline {
         checkout([$class: 'GitSCM',
           branches: [[name: '*/main']],
           userRemoteConfigs: [[url: 'https://github.com/wasimm267/Jenkins-Zero-To-Hero.git']],
-          doGenerateSubmoduleConfigurations: false,
-          extensions: [[$class: 'CloneOption', noTags: false, reference: '', shallow: false, depth: 0, honorRefspec: true]]
+          extensions: [[$class: 'CloneOption', shallow: false]]
         ])
       }
     }
@@ -40,75 +39,5 @@ pipeline {
     stage('Build and Test') {
       steps {
         sh '''
-          cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-          mvn clean package
-        '''
-      }
-    }
+          cd java-maven-sonar-argocd-helm-k8s/spring-
 
-    stage('Static Code Analysis') {
-      steps {
-        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-          sh '''
-            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-            mvn sonar:sonar \
-              -Dsonar.login=$SONAR_AUTH_TOKEN \
-              -Dsonar.host.url=${SONAR_URL}
-          '''
-        }
-      }
-    }
-
-    stage('Build and Push Docker Image') {
-      environment {
-        REGISTRY_CREDENTIALS = credentials('docker-cred1')
-      }
-      steps {
-        script {
-          sh '''
-            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-            docker build -t ${DOCKER_IMAGE} .
-          '''
-          def dockerImage = docker.image("${DOCKER_IMAGE}")
-          docker.withRegistry('https://index.docker.io/v1/', "docker-cred1") {
-            dockerImage.push()
-          }
-        }
-      }
-    }
-
-    stage('Update Deployment File') {
-      steps {
-        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-          sh '''
-            # Allow Git to run inside Docker container
-            git config --global --add safe.directory /var/lib/jenkins/workspace/ci-cd-demo
-
-            # Get to the root of the Git repo
-            GIT_ROOT=$(git rev-parse --show-toplevel) || exit 1
-            cd "$GIT_ROOT"
-
-            git config user.email "wasimm267@gmail.com"
-            git config user.name "wasimm267"
-
-            # Update the image tag in the Kubernetes manifest
-            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-
-            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-          '''
-        }
-      }
-    }
-  }
-
-  post {
-    success {
-      echo "✅ Pipeline completed successfully"
-    }
-    failure {
-      echo "❌ Pipeline failed. Check the logs above."
-    }
-  }
-}
