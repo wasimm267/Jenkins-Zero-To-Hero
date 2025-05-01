@@ -6,10 +6,6 @@ pipeline {
     }
   }
 
-  options {
-    timeout(time: 10, unit: 'MINUTES')
-  }
-
   environment {
     SONAR_URL = "http://192.168.106.130:9000"
     DOCKER_IMAGE = "wasimm267/ultimate-cicd:${BUILD_NUMBER}"
@@ -18,10 +14,13 @@ pipeline {
   }
 
   stages {
+
     stage('Install Docker CLI') {
       steps {
         sh '''
-          apt-get update && apt-get install -y docker.io
+          echo "Installing Docker inside agent container..."
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io
           docker --version
         '''
       }
@@ -35,7 +34,10 @@ pipeline {
 
     stage('Build and Test') {
       steps {
-        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+        sh '''
+          cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+          mvn clean package
+        '''
       }
     }
 
