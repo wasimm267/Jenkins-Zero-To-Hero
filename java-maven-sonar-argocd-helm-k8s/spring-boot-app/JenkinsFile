@@ -97,15 +97,6 @@ pipeline {
         }
       }
     }
-
-    stage('ArgoCD Sync') {
-      steps {
-        sh '''
-          echo "Triggering ArgoCD Sync..."
-          argocd app sync spring-boot-app --grpc-web
-        '''
-      }
-    }
   }
 
   post {
